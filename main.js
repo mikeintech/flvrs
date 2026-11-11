@@ -67,27 +67,43 @@
   const stage = $('.stage');
   let busy = false;
   // one move at a time: either the pieces trade sides, or the color changes. Never both together.
+  // pieces glide across and trade places in one continuous move (FLIP: measure, swap, animate from old spot)
   function sideSwap() {
     busy = true;
-    const toLeft = stage.classList.contains('flip');           // where the hoodie is heading
-    gsap.timeline({ onComplete: () => (busy = false) })
-      .to(hoodie, { x: toLeft ? -120 : 120, rotationY: 80, scale: .85, opacity: 0, duration: .55, ease: 'power2.in' }, 0)
-      .to(pants, { x: toLeft ? 120 : -120, rotationY: -80, scale: .85, opacity: 0, duration: .55, ease: 'power2.in' }, 0)
-      .add(() => stage.classList.toggle('flip'))
-      .fromTo(hoodie, { x: toLeft ? 120 : -120, rotationY: -80, scale: .85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .9, ease: 'power3.out' })
-      .fromTo(pants, { x: toLeft ? -120 : 120, rotationY: 80, scale: .85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .9, ease: 'power3.out' }, '<');
+    const b = [hoodie, pants].map(el => el.getBoundingClientRect());
+    gsap.set([hoodie, pants], { x: 0, y: 0 });
+    const a0 = [hoodie, pants].map(el => el.getBoundingClientRect());
+    stage.classList.toggle('flip');
+    const a1 = [hoodie, pants].map(el => el.getBoundingClientRect());
+    const dx = [0, 1].map(k => b[k].left - a1[k].left), dy = [0, 1].map(k => b[k].top - a1[k].top);
+    gsap.set(hoodie, { zIndex: 5 });
+    gsap.timeline({ onComplete: () => { busy = false; gsap.set(hoodie, { clearProps: 'zIndex' }); } })
+      // hoodie arcs up and over in front, pants dip and pass behind
+      .fromTo(hoodie, { x: dx[0], y: dy[0] }, { x: 0, duration: 1.6, ease: 'power2.inOut' }, 0)
+      .to(hoodie, { keyframes: { y: [dy[0], dy[0] * .5 - 70, 0], easeEach: 'sine.inOut' }, duration: 1.6 }, 0)
+      .to(hoodie, { keyframes: { rotation: [-4, 6, -4], scale: [1, 1.06, 1] }, duration: 1.6, ease: 'sine.inOut' }, 0)
+      .fromTo(pants, { x: dx[1], y: dy[1] }, { x: 0, duration: 1.6, ease: 'power2.inOut' }, 0)
+      .to(pants, { keyframes: { y: [dy[1], dy[1] * .5 + 50, 0], easeEach: 'sine.inOut' }, duration: 1.6 }, 0)
+      .to(pants, { keyframes: { rotation: [4, -5, 4], scale: [1, .94, 1] }, duration: 1.6, ease: 'sine.inOut' }, 0);
+  }
+  // color change: the new colorway cross-fades right over the old one, nothing vanishes
+  function crossfade(el, src) {
+    const ghost = el.cloneNode(); ghost.removeAttribute('data-depth'); ghost.classList.add('ghost');
+    ghost.src = src; ghost.style.opacity = 0;
+    el.after(ghost);
+    gsap.set(ghost, { x: gsap.getProperty(el, 'x'), y: gsap.getProperty(el, 'y'), rotation: gsap.getProperty(el, 'rotation'), xPercent: gsap.getProperty(el, 'xPercent'), yPercent: gsap.getProperty(el, 'yPercent') });
+    return gsap.to(ghost, { opacity: 1, duration: 1.2, ease: 'sine.inOut', onComplete: () => { el.src = src; ghost.remove(); } });
   }
   function colorFade(i) {
     const f = FLAVORS[i]; cur = i; busy = true;
     gsap.timeline({ onComplete: () => (busy = false) })
-      .to([hoodie, pants, logo, fname], { opacity: 0, duration: .5, ease: 'power1.in' }, 0)
       .to(flood, { backgroundColor: f.bg, duration: 1.4, ease: 'sine.inOut' }, 0)
-      .add(() => {
-        paint(f);
-        hoodie.src = img(f.id, 'hoodie'); pants.src = img(f.id, 'pants'); logo.src = `img/logo-${f.logo}.png`;
-        fname.textContent = f.name; fdesc.textContent = f.desc;
-      }, .5)
-      .to([hoodie, pants, logo, fname], { opacity: 1, duration: .7, ease: 'power1.out', stagger: .06 }, .6);
+      .add(() => paint(f), 0)
+      .add(() => { crossfade(hoodie, img(f.id, 'hoodie')); crossfade(pants, img(f.id, 'pants')); crossfade(logo, `img/logo-${f.logo}.png`); }, 0)
+      .to(fname, { opacity: 0, duration: .4 }, .1)
+      .add(() => { fname.textContent = f.name; fdesc.textContent = f.desc; }, .5)
+      .to(fname, { opacity: 1, duration: .6 }, .55)
+      .to({}, { duration: .1 }, 1.3);
   }
   // idle: after ~5s quiet the pieces trade sides; after a couple of swaps the next step is a color change
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
