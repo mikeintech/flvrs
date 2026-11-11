@@ -118,7 +118,10 @@
     if (busy || document.hidden || scrollY > innerHeight * .5) return;   // only while the hero is on screen
     if (now - lastTouch < 5000 || now - lastAuto < 6000) return;
     lastAuto = now; ticks++;
-    if (ticks % 3 === 0) colorFade((cur + 1) % FLAVORS.length);          // every third step: new flavor, no movement
+    if (ticks % 3 === 0) {                                                 // every third step: the same flash switch as tapping a flavor
+      const next = (cur + 1) % FLAVORS.length;
+      busy = true; setFlavor(next, $$('.scoop')[next]); setTimeout(() => (busy = false), 1800);
+    }
     else sideSwap();                                                       // otherwise: trade sides, same flavor
   }, 500);
 
