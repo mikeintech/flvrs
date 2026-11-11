@@ -51,8 +51,8 @@ a{color:inherit}
 .build .sub{margin-top:12px;color:var(--soft);font-size:17px}
 .builder{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,70px);margin-top:44px;align-items:center}
 .preview{position:relative;height:min(70vh,640px);border-radius:28px;background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.08);overflow:hidden}
-.pv-top{position:absolute;left:50%;top:4%;height:41%;width:auto;transform:translateX(-50%);z-index:2;filter:drop-shadow(0 18px 20px rgba(0,0,0,.14))}
-.pv-bot{position:absolute;left:50%;top:49%;height:47%;width:auto;transform:translateX(-50%);filter:drop-shadow(0 18px 20px rgba(0,0,0,.12))}
+.pv-top{position:absolute;left:50%;top:4%;height:41%;width:auto;transform:translateX(-50%);z-index:2}
+.pv-bot{position:absolute;left:50%;top:49%;height:47%;width:auto;transform:translateX(-50%)}
 .combo{position:absolute;left:18px;bottom:16px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--soft)}
 .row{display:grid;grid-template-columns:80px 1fr;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid rgba(0,0,0,.1)}
 .lbl{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--soft)}
