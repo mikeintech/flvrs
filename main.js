@@ -76,8 +76,7 @@
     stage.classList.toggle('flip');
     const a1 = [hoodie, pants].map(el => el.getBoundingClientRect());
     const dx = [0, 1].map(k => b[k].left - a1[k].left), dy = [0, 1].map(k => b[k].top - a1[k].top);
-    gsap.set(hoodie, { zIndex: 5 });
-    gsap.timeline({ onComplete: () => { busy = false; gsap.set(hoodie, { clearProps: 'zIndex' }); } })
+    gsap.timeline({ onComplete: () => (busy = false) })     // both stay behind the logo (logo z 4, hoodie 3, pants 1)
       // hoodie arcs up and over in front, pants dip and pass behind
       .fromTo(hoodie, { x: dx[0], y: dy[0] }, { x: 0, duration: 1.6, ease: 'power2.inOut' }, 0)
       .to(hoodie, { keyframes: { y: [dy[0], dy[0] * .5 - 70, 0], easeEach: 'sine.inOut' }, duration: 1.6 }, 0)
