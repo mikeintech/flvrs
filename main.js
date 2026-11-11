@@ -29,8 +29,9 @@
     document.documentElement.style.setProperty('--accent', f.thread);
     $$('.scoop').forEach((s, i) => s.setAttribute('aria-checked', FLAVORS[i] === f));
   }
-  function setFlavor(i, from, first) {
+  function setFlavor(i, from, first, auto) {
     const f = FLAVORS[i]; cur = i;
+    if (auto) return autoSwap(i, from);
     if (first) {
       hoodie.src = img(f.id, 'hoodie'); pants.src = img(f.id, 'pants'); logo.src = `img/logo-${f.logo}.png`;
       fname.textContent = f.name; fdesc.textContent = f.desc; paint(f); flood.style.background = f.bg; return;
@@ -62,6 +63,54 @@
   }
   setFlavor(0, null, true);
   gsap.set(hoodie, { rotate: -4 }); gsap.set(pants, { rotate: 4 });
+
+  // ---------- idle mode: flavors rotate on their own and the pieces trade sides ----------
+  const stage = $('.stage');
+  let busy = false;
+  function autoSwap(i, from, sameColor) {
+    const f = FLAVORS[i]; busy = true;
+    if (!sameColor) {
+      const r = from.getBoundingClientRect(), hr = $('.hero').getBoundingClientRect();
+      const x = r.left + r.width / 2 - hr.left, y = r.top + r.height / 2 - hr.top;
+      const wave = document.createElement('div');
+      wave.style.cssText = `position:absolute;inset:0;z-index:-1;background:${f.bg};clip-path:circle(0px at ${x}px ${y}px)`;
+      $('.hero').appendChild(wave);
+      const R = Math.hypot(Math.max(x, hr.width - x), Math.max(y, hr.height - y));
+      gsap.to(wave, { clipPath: `circle(${R}px at ${x}px ${y}px)`, duration: 1, ease: 'power3.inOut', onComplete: () => { flood.style.background = f.bg; wave.remove(); } });
+      paint(f);
+    }
+    const toLeft = stage.classList.contains('flip');           // where the hoodie is heading
+    gsap.timeline({ onComplete: () => (busy = false) })
+      // spin toward the middle and vanish
+      .to(hoodie, { x: toLeft ? -140 : 140, rotationY: 90, scale: .7, opacity: 0, duration: .45, ease: 'power2.in' }, 0)
+      .to(pants, { x: toLeft ? 140 : -140, rotationY: -90, scale: .7, opacity: 0, duration: .45, ease: 'power2.in' }, .04)
+      .to(logo, { rotationY: 90, opacity: 0, duration: .35, ease: 'power2.in' }, .1)
+      .to(fname, { y: 30, opacity: 0, duration: .25 }, 0)
+      .add(() => {
+        stage.classList.toggle('flip');
+        hoodie.src = img(f.id, 'hoodie'); pants.src = img(f.id, 'pants'); logo.src = `img/logo-${f.logo}.png`;
+        fname.textContent = f.name; fdesc.textContent = f.desc;
+      })
+      // spin back in on the other side
+      .fromTo(hoodie, { x: toLeft ? 140 : -140, rotationY: -90, scale: .7, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .8, ease: 'back.out(1.6)' })
+      .fromTo(pants, { x: toLeft ? -140 : 140, rotationY: 90, scale: .7, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .8, ease: 'back.out(1.6)' }, '<.06')
+      .fromTo(logo, { rotationY: -90, opacity: 0 }, { rotationY: 0, opacity: 1, duration: .6, ease: 'back.out(1.8)' }, '<.05')
+      .fromTo(fname, { y: -24, opacity: 0 }, { y: 0, opacity: 1, duration: .5 }, '<.1');
+  }
+  // stage 1 (idle ~4s): pieces spin and trade sides, same flavor
+  // stage 2 (keep waiting): every other swap also moves to the next flavor
+  let lastTouch = performance.now(), lastAuto = performance.now(), ticks = 0;
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastTouch = performance.now(); ticks = 0; }, { passive: true }));
+  setInterval(() => {
+    const now = performance.now();
+    if (busy || document.hidden || scrollY > innerHeight * .5) return;   // only while the hero is on screen
+    if (now - lastTouch < 4000 || now - lastAuto < 3800) return;
+    lastAuto = now; ticks++;
+    const recolor = ticks >= 2 && ticks % 2 === 0;
+    const next = recolor ? (cur + 1) % FLAVORS.length : cur;
+    if (recolor) cur = next;
+    autoSwap(next, $$('.scoop')[next], !recolor);
+  }, 400);
 
   // hero intro (skipped if the page opens in a background tab, so nothing is left hidden)
   const intro = gsap.timeline({ defaults: { ease: 'power4.out' } });

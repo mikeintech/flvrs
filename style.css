@@ -23,6 +23,8 @@ a{color:inherit}
 .piece{position:absolute;height:72%;width:auto;filter:drop-shadow(0 30px 34px rgba(0,0,0,.22));will-change:transform}
 .hoodie{left:0;top:12%;z-index:3}
 .pants{right:2%;top:8%;z-index:1;height:84%}
+.stage.flip .hoodie{left:auto;right:0}
+.stage.flip .pants{right:auto;left:2%}
 .fname{font-weight:200;font-size:clamp(44px,8vw,110px);letter-spacing:-.01em;line-height:1}
 .fdesc{margin-top:8px;font-size:15px;letter-spacing:.08em;color:var(--soft)}
 .scoops{display:flex;gap:16px;margin:26px 0 22px}
@@ -115,6 +117,8 @@ footer p{color:var(--soft);letter-spacing:.14em;font-size:13px;text-transform:up
   .logo-wrap{width:56vw;top:46%}
   .hoodie{left:-4%;top:4%;height:52%}
   .pants{right:-3%;top:30%;height:66%}
+  .stage.flip .hoodie{left:auto;right:-4%}
+  .stage.flip .pants{right:auto;left:-3%}
   .scoop{width:54px;height:54px}
   .stitch{grid-template-columns:1fr;padding:10vh 16px}
   .lensbox{cursor:default}
