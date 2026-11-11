@@ -31,7 +31,6 @@
   }
   function setFlavor(i, from, first, auto) {
     const f = FLAVORS[i]; cur = i;
-    if (auto) return autoSwap(i, from);
     if (first) {
       hoodie.src = img(f.id, 'hoodie'); pants.src = img(f.id, 'pants'); logo.src = `img/logo-${f.logo}.png`;
       fname.textContent = f.name; fdesc.textContent = f.desc; paint(f); flood.style.background = f.bg; return;
@@ -67,50 +66,41 @@
   // ---------- idle mode: flavors rotate on their own and the pieces trade sides ----------
   const stage = $('.stage');
   let busy = false;
-  function autoSwap(i, from, sameColor) {
-    const f = FLAVORS[i]; busy = true;
-    if (!sameColor) {
-      const r = from.getBoundingClientRect(), hr = $('.hero').getBoundingClientRect();
-      const x = r.left + r.width / 2 - hr.left, y = r.top + r.height / 2 - hr.top;
-      const wave = document.createElement('div');
-      wave.style.cssText = `position:absolute;inset:0;z-index:-1;background:${f.bg};clip-path:circle(0px at ${x}px ${y}px)`;
-      $('.hero').appendChild(wave);
-      const R = Math.hypot(Math.max(x, hr.width - x), Math.max(y, hr.height - y));
-      gsap.to(wave, { clipPath: `circle(${R}px at ${x}px ${y}px)`, duration: 1, ease: 'power3.inOut', onComplete: () => { flood.style.background = f.bg; wave.remove(); } });
-      paint(f);
-    }
+  // one move at a time: either the pieces trade sides, or the color changes. Never both together.
+  function sideSwap() {
+    busy = true;
     const toLeft = stage.classList.contains('flip');           // where the hoodie is heading
     gsap.timeline({ onComplete: () => (busy = false) })
-      // spin toward the middle and vanish
-      .to(hoodie, { x: toLeft ? -140 : 140, rotationY: 90, scale: .7, opacity: 0, duration: .45, ease: 'power2.in' }, 0)
-      .to(pants, { x: toLeft ? 140 : -140, rotationY: -90, scale: .7, opacity: 0, duration: .45, ease: 'power2.in' }, .04)
-      .to(logo, { rotationY: 90, opacity: 0, duration: .35, ease: 'power2.in' }, .1)
-      .to(fname, { y: 30, opacity: 0, duration: .25 }, 0)
+      .to(hoodie, { x: toLeft ? -120 : 120, rotationY: 80, scale: .85, opacity: 0, duration: .55, ease: 'power2.in' }, 0)
+      .to(pants, { x: toLeft ? 120 : -120, rotationY: -80, scale: .85, opacity: 0, duration: .55, ease: 'power2.in' }, 0)
+      .add(() => stage.classList.toggle('flip'))
+      .fromTo(hoodie, { x: toLeft ? 120 : -120, rotationY: -80, scale: .85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .9, ease: 'power3.out' })
+      .fromTo(pants, { x: toLeft ? -120 : 120, rotationY: 80, scale: .85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .9, ease: 'power3.out' }, '<');
+  }
+  function colorFade(i) {
+    const f = FLAVORS[i]; cur = i; busy = true;
+    gsap.timeline({ onComplete: () => (busy = false) })
+      .to([hoodie, pants, logo, fname], { opacity: 0, duration: .5, ease: 'power1.in' }, 0)
+      .to(flood, { backgroundColor: f.bg, duration: 1.4, ease: 'sine.inOut' }, 0)
       .add(() => {
-        stage.classList.toggle('flip');
+        paint(f);
         hoodie.src = img(f.id, 'hoodie'); pants.src = img(f.id, 'pants'); logo.src = `img/logo-${f.logo}.png`;
         fname.textContent = f.name; fdesc.textContent = f.desc;
-      })
-      // spin back in on the other side
-      .fromTo(hoodie, { x: toLeft ? 140 : -140, rotationY: -90, scale: .7, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .8, ease: 'back.out(1.6)' })
-      .fromTo(pants, { x: toLeft ? -140 : 140, rotationY: 90, scale: .7, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: .8, ease: 'back.out(1.6)' }, '<.06')
-      .fromTo(logo, { rotationY: -90, opacity: 0 }, { rotationY: 0, opacity: 1, duration: .6, ease: 'back.out(1.8)' }, '<.05')
-      .fromTo(fname, { y: -24, opacity: 0 }, { y: 0, opacity: 1, duration: .5 }, '<.1');
+      }, .5)
+      .to([hoodie, pants, logo, fname], { opacity: 1, duration: .7, ease: 'power1.out', stagger: .06 }, .6);
   }
-  // stage 1 (idle ~4s): pieces spin and trade sides, same flavor
-  // stage 2 (keep waiting): every other swap also moves to the next flavor
+  // idle: after ~5s quiet the pieces trade sides; after a couple of swaps the next step is a color change
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let lastTouch = performance.now(), lastAuto = performance.now(), ticks = 0;
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastTouch = performance.now(); ticks = 0; }, { passive: true }));
-  setInterval(() => {
+  if (!calm) setInterval(() => {
     const now = performance.now();
     if (busy || document.hidden || scrollY > innerHeight * .5) return;   // only while the hero is on screen
-    if (now - lastTouch < 4000 || now - lastAuto < 3800) return;
+    if (now - lastTouch < 5000 || now - lastAuto < 6000) return;
     lastAuto = now; ticks++;
-    const recolor = ticks >= 2 && ticks % 2 === 0;
-    const next = recolor ? (cur + 1) % FLAVORS.length : cur;
-    if (recolor) cur = next;
-    autoSwap(next, $$('.scoop')[next], !recolor);
-  }, 400);
+    if (ticks % 3 === 0) colorFade((cur + 1) % FLAVORS.length);          // every third step: new flavor, no movement
+    else sideSwap();                                                       // otherwise: trade sides, same flavor
+  }, 500);
 
   // hero intro (skipped if the page opens in a background tab, so nothing is left hidden)
   const intro = gsap.timeline({ defaults: { ease: 'power4.out' } });
@@ -131,6 +121,7 @@
     const tilt = pieces.map(p => [gsap.quickTo(p, 'rotationY', { duration: .6 }), gsap.quickTo(p, 'rotationX', { duration: .6 }), gsap.quickTo(p, 'x', { duration: .8 }), +p.dataset.depth]);
     const lx = gsap.quickTo(lw, 'x', { duration: .9 }), ly = gsap.quickTo(lw, 'y', { duration: .9 });
     addEventListener('pointermove', e => {
+      if (busy) return;                                    // don't fight the idle swap mid-spin
       const nx = e.clientX / innerWidth - .5, ny = e.clientY / innerHeight - .5;
       tilt.forEach(([ry, rx, x, d]) => { ry(nx * 30 * d); rx(-ny * 18 * d); x(nx * 40 * d); });
       lx(nx * -20); ly(ny * -12);
