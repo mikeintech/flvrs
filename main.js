@@ -61,6 +61,8 @@
     pickBuild('hoodie', i); pickBuild('pants', i);
   }
   setFlavor(0, null, true);
+  // preload every colorway so fades never start on a half-loaded image
+  FLAVORS.forEach(f => [img(f.id, 'hoodie'), img(f.id, 'pants'), `img/logo-${f.logo}.png`].forEach(s => { const im = new Image(); im.src = s; }));
   gsap.set(hoodie, { rotate: -4 }); gsap.set(pants, { rotate: 4 });
 
   // ---------- idle mode: flavors rotate on their own and the pieces trade sides ----------
@@ -91,7 +93,10 @@
     ghost.src = src; ghost.style.opacity = 0;
     el.after(ghost);
     gsap.set(ghost, { x: gsap.getProperty(el, 'x'), y: gsap.getProperty(el, 'y'), rotation: gsap.getProperty(el, 'rotation'), xPercent: gsap.getProperty(el, 'xPercent'), yPercent: gsap.getProperty(el, 'yPercent') });
-    return gsap.to(ghost, { opacity: 1, duration: 1.2, ease: 'sine.inOut', onComplete: () => { el.src = src; ghost.remove(); } });
+    // true cross-dissolve: new fades in while the old fades out, overlapping, then they swap unseen
+    return gsap.timeline({ onComplete: () => { el.src = src; el.decode ? el.decode().catch(() => {}).finally(() => { gsap.set(el, { opacity: 1 }); ghost.remove(); }) : (gsap.set(el, { opacity: 1 }), ghost.remove()); } })
+      .to(ghost, { opacity: 1, duration: 1.1, ease: 'sine.inOut' }, 0)
+      .to(el, { opacity: 0, duration: 1.1, ease: 'sine.inOut' }, .25);
   }
   function colorFade(i) {
     const f = FLAVORS[i]; cur = i; busy = true;
